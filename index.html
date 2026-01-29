@@ -45,36 +45,25 @@
 
         .header h2 { margin: 0; }
 
-        /* --- Form Styles --- */
-        .row-entry {
-            border: 1px solid var(--border);
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            background: #fafafa;
-        }
-
-        .row-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr; /* 3 columns for Date/Qty/Amount */
-            gap: 10px;
-        }
-        
-        /* Grid adjustments for Selects */
-        .row-selects {
+        /* --- Input Grid --- */
+        .input-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 12px;
+        }
+        
+        .full-width {
+            grid-column: span 2;
         }
 
         @media (max-width: 480px) {
-            .row-grid, .row-selects { grid-template-columns: 1fr; }
+            .input-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
         }
 
         input, select {
             width: 100%;
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
@@ -86,39 +75,60 @@
             color: #666;
             font-weight: bold;
             display: block;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
-        .btn-remove {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
+        /* --- Buttons --- */
         .btn {
-            flex: 1;
+            width: 100%;
             padding: 12px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
             font-size: 16px;
+            margin-top: 15px;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+
+        .btn-add { background: var(--primary); color: white; }
+        .btn-submit { background: #27ae60; color: white; margin-top: 20px; display: none; } /* Hidden by default */
+        
+        /* --- Staged List Table --- */
+        #staged-container {
+            margin-top: 25px;
+            border-top: 2px solid #eee;
+            padding-top: 15px;
+            display: none; /* Hidden if empty */
+        }
+        
+        .list-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
         }
 
-        .btn-add { background: var(--accent); color: white; }
-        .btn-submit { background: #27ae60; color: white; }
-        .btn:hover { opacity: 0.9; }
+        .staged-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .staged-table th { background: #f8f9fa; text-align: left; padding: 8px; border-bottom: 2px solid #ddd; }
+        .staged-table td { padding: 8px; border-bottom: 1px solid #eee; }
+        .staged-table td.qty-col { font-size: 11px; color: #666; }
+        
+        .btn-del {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 10px;
+        }
 
         .status-msg {
             text-align: center;
@@ -129,41 +139,10 @@
         .success { color: #27ae60; }
         .error { color: #c0392b; }
 
-        /* --- Session History Table --- */
-        #history-card {
-            display: none; /* Hidden until data exists */
-        }
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-            margin-top: 10px;
-        }
-        .history-table th, .history-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        .history-table th { background-color: #f2f2f2; }
-
         /* --- Thermal Receipt (Hidden) --- */
         #receipt-wrapper { display: flex; justify-content: center; position: absolute; top: -9999px; }
-        
-        .thermal-bill {
-            width: 300px;
-            background: #fff;
-            color: #000;
-            padding: 20px;
-            font-family: 'Courier New', Courier, monospace;
-            border: 1px solid #eee;
-        }
-
-        .thermal-header {
-            text-align: center;
-            border-bottom: 2px dashed #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-        }
+        .thermal-bill { width: 300px; background: #fff; color: #000; padding: 20px; font-family: 'Courier New', Courier, monospace; border: 1px solid #eee; }
+        .thermal-header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
         .thermal-title { font-size: 18px; font-weight: bold; text-transform: uppercase; }
         .thermal-meta { font-size: 12px; margin-top: 5px; }
         .thermal-item { margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; font-size: 12px; }
@@ -181,33 +160,58 @@
             <h2>Home Management</h2>
         </div>
 
-        <form id="expenseForm">
-            <div id="rows-container"></div>
-            
-            <div class="actions">
-                <button type="button" class="btn btn-add" onclick="addNewRow()">+ Add Row</button>
-                <button type="button" class="btn btn-submit" onclick="submitExpenses()">Submit & Save</button>
+        <div class="input-grid">
+            <div>
+                <label>Date</label>
+                <input type="date" id="in-date">
             </div>
-        </form>
+            <div>
+                <label>Amount</label>
+                <input type="number" step="0.01" id="in-amount" placeholder="0.00">
+            </div>
+            <div>
+                <label>Category</label>
+                <select id="in-category"><option value="">Loading...</option></select>
+            </div>
+            <div>
+                <label>Payment Mode</label>
+                <select id="in-payment"><option value="">Loading...</option></select>
+            </div>
+            <div class="full-width">
+                <label>Item Description</label>
+                <input type="text" id="in-item" placeholder="What did you buy?">
+            </div>
+            <div>
+                <label>Qty (Text)</label>
+                <input type="text" id="in-qty" placeholder="e.g. 1 kg, 2 packs">
+            </div>
+            <div>
+                <label>Purchaser Name</label>
+                <input type="text" id="in-purchaser" placeholder="Who bought it?">
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-add" onclick="addToList()">+ Add to List</button>
+
+        <div id="staged-container">
+            <div class="list-title">Items to Submit:</div>
+            <table class="staged-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Details</th>
+                        <th>Amt</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="staged-body">
+                    </tbody>
+            </table>
+
+            <button type="button" class="btn btn-submit" id="btn-final-submit" onclick="submitFinal()">Final Submit & Generate Bill</button>
+        </div>
 
         <div id="status" class="status-msg"></div>
-    </div>
-
-    <div class="card" id="history-card">
-        <div class="header">
-            <h3>Recent Entries (Session)</h3>
-        </div>
-        <table class="history-table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Amt</th>
-                </tr>
-            </thead>
-            <tbody id="history-body"></tbody>
-        </table>
     </div>
 
     <div id="receipt-wrapper">
@@ -229,157 +233,157 @@
 
 <script>
     // ================= CONFIGURATION =================
-    // REPLACE THIS URL WITH YOUR DEPLOYED GAS WEB APP URL
+    // TODO: PASTE YOUR DEPLOYED GAS WEB APP URL HERE
     const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbybG5xJzKwryeAT79V69G4CuWzECHiphSLJRzmqWGMpN0jx5BEoRFamq2a99qFwyWYw/exec'; 
     // =================================================
 
-    let categories = [];
-    let paymentModes = [];
+    // Global Array to hold items before submission
+    let stagedItems = [];
 
+    // On Load
     window.onload = async () => {
+        // Set Default Date
+        document.getElementById('in-date').valueAsDate = new Date();
         await fetchDropdowns();
-        addNewRow();
     };
 
+    // 1. Fetch Dropdowns
     async function fetchDropdowns() {
         try {
             const response = await fetch(GAS_BASE_URL);
             const data = await response.json();
-            if (data.categories) categories = data.categories;
-            if (data.paymentModes) paymentModes = data.paymentModes;
+            
+            const catSelect = document.getElementById('in-category');
+            const paySelect = document.getElementById('in-payment');
+
+            populateSelect(catSelect, data.categories);
+            populateSelect(paySelect, data.paymentModes);
+
         } catch (error) {
+            console.error(error);
             document.getElementById('status').innerText = "Error loading dropdowns.";
         }
     }
 
-    function addNewRow() {
-        const container = document.getElementById('rows-container');
-        const rowId = 'row-' + Date.now();
-        const div = document.createElement('div');
-        div.className = 'row-entry';
-        div.id = rowId;
-
-        const catOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
-        const payOptions = paymentModes.map(m => `<option value="${m}">${m}</option>`).join('');
-
-        div.innerHTML = `
-            <div class="row-grid">
-                <div>
-                    <label>Date</label>
-                    <input type="date" name="date" class="input-date">
-                </div>
-                <div>
-                    <label>QTY</label>
-                    <input type="number" name="qty" placeholder="1">
-                </div>
-                <div>
-                    <label>Amount</label>
-                    <input type="number" step="0.01" name="amount" placeholder="0.00">
-                </div>
-            </div>
-            
-            <div class="row-selects">
-                <div>
-                    <label>Category</label>
-                    <select name="category"><option value="">Select...</option>${catOptions}</select>
-                </div>
-                <div>
-                    <label>Payment Mode</label>
-                    <select name="paymentMode"><option value="">Select...</option>${payOptions}</select>
-                </div>
-            </div>
-
-            <div style="margin-top: 10px;">
-                <label>Item Description</label>
-                <input type="text" name="item" placeholder="Item Name">
-            </div>
-            <div style="margin-top: 10px;">
-                <label>Purchaser Name</label>
-                <input type="text" name="purchaser" placeholder="Purchaser">
-            </div>
-            <button type="button" class="btn-remove" onclick="removeRow('${rowId}')">Remove Row</button>
-        `;
-
-        container.appendChild(div);
-        div.querySelector('.input-date').valueAsDate = new Date();
-    }
-
-    function removeRow(id) {
-        const row = document.getElementById(id);
-        if (row) row.remove();
-    }
-
-    async function submitExpenses() {
-        const statusEl = document.getElementById('status');
-        statusEl.innerText = "Saving...";
-        statusEl.className = "status-msg";
-
-        const rows = document.querySelectorAll('.row-entry');
-        const entries = [];
-        
-        rows.forEach(row => {
-            entries.push({
-                date: row.querySelector('[name="date"]').value,
-                qty: row.querySelector('[name="qty"]').value,
-                amount: row.querySelector('[name="amount"]').value,
-                category: row.querySelector('[name="category"]').value,
-                paymentMode: row.querySelector('[name="paymentMode"]').value,
-                item: row.querySelector('[name="item"]').value,
-                purchaser: row.querySelector('[name="purchaser"]').value
+    function populateSelect(el, items) {
+        el.innerHTML = '<option value="">Select...</option>';
+        if(items) {
+            items.forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.innerText = i;
+                el.appendChild(opt);
             });
+        }
+    }
+
+    // 2. Add to Local List (Staging)
+    function addToList() {
+        const date = document.getElementById('in-date').value;
+        const amount = document.getElementById('in-amount').value;
+        const category = document.getElementById('in-category').value;
+        const payment = document.getElementById('in-payment').value;
+        const item = document.getElementById('in-item').value;
+        const qty = document.getElementById('in-qty').value;
+        const purchaser = document.getElementById('in-purchaser').value;
+
+        // Basic Validation
+        if (!amount && !item) {
+            alert("Please enter at least an Item Name or Amount");
+            return;
+        }
+
+        // Add to array
+        stagedItems.push({
+            date, amount, category, paymentMode: payment, item, qty, purchaser
         });
 
-        if (entries.length === 0) return;
+        // Render Table
+        renderStagedTable();
+
+        // Clear Fields (keep Date and Purchaser for convenience)
+        document.getElementById('in-amount').value = '';
+        document.getElementById('in-item').value = '';
+        document.getElementById('in-qty').value = '';
+        document.getElementById('in-category').value = '';
+        document.getElementById('in-payment').value = '';
+    }
+
+    // 3. Remove from Local List
+    function removeFromList(index) {
+        stagedItems.splice(index, 1);
+        renderStagedTable();
+    }
+
+    // 4. Update UI
+    function renderStagedTable() {
+        const container = document.getElementById('staged-container');
+        const tbody = document.getElementById('staged-body');
+        const submitBtn = document.getElementById('btn-final-submit');
+
+        tbody.innerHTML = '';
+
+        if (stagedItems.length === 0) {
+            container.style.display = 'none';
+            submitBtn.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        submitBtn.style.display = 'block';
+
+        stagedItems.forEach((entry, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><b>${entry.item || entry.category}</b></td>
+                <td class="qty-col">${entry.qty ? entry.qty : '-'} <br> ${entry.paymentMode}</td>
+                <td>${entry.amount}</td>
+                <td><button type="button" class="btn-del" onclick="removeFromList(${idx})">X</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 5. Final Submit
+    async function submitFinal() {
+        if (stagedItems.length === 0) return;
+
+        const statusEl = document.getElementById('status');
+        statusEl.innerText = "Submitting all items...";
+        statusEl.className = "status-msg";
+        
+        // Hide button to prevent double click
+        document.getElementById('btn-final-submit').style.display = 'none';
 
         try {
             const response = await fetch(GAS_BASE_URL, {
                 method: "POST",
-                body: JSON.stringify({ entries: entries })
+                body: JSON.stringify({ entries: stagedItems })
             });
             const result = await response.json();
 
             if (result.status === 'success') {
-                statusEl.innerText = `Saved! Generating Receipt...`;
+                statusEl.innerText = `Success! Saved ${result.rowsAdded} entries. Generating Bill...`;
                 statusEl.className = "status-msg success";
-                
-                // 1. Generate Bill
-                generateAndDownloadBill(entries);
-                
-                // 2. Note Below (Add to History)
-                addToHistory(entries);
 
-                // 3. Reset Form for new entry
-                document.getElementById('rows-container').innerHTML = '';
-                addNewRow();
+                // Generate Bill
+                generateAndDownloadBill(stagedItems);
+
+                // Clear Data & UI
+                stagedItems = [];
+                renderStagedTable(); // This hides the table
                 
-                setTimeout(() => { statusEl.innerText = "Ready for new entry."; }, 2000);
             } else {
                 throw new Error(result.message);
             }
         } catch (error) {
             statusEl.innerText = "Error: " + error.message;
             statusEl.className = "status-msg error";
+            document.getElementById('btn-final-submit').style.display = 'block'; // Show button again on error
         }
     }
 
-    function addToHistory(entries) {
-        const historyCard = document.getElementById('history-card');
-        const historyBody = document.getElementById('history-body');
-        
-        historyCard.style.display = 'block';
-
-        entries.forEach(entry => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${entry.date}</td>
-                <td>${entry.item || entry.category}</td>
-                <td>${entry.qty || '-'}</td>
-                <td>${entry.amount}</td>
-            `;
-            historyBody.appendChild(tr);
-        });
-    }
-
+    // 6. Generate Bill
     function generateAndDownloadBill(entries) {
         const billEl = document.getElementById('thermal-receipt');
         const itemsContainer = document.getElementById('bill-items');
@@ -393,13 +397,13 @@
         entries.forEach(entry => {
             const amt = parseFloat(entry.amount) || 0;
             total += amt;
-            const qty = entry.qty ? `(${entry.qty}) ` : '';
+            const qtyStr = entry.qty ? `(${entry.qty}) ` : '';
             
             const itemDiv = document.createElement('div');
             itemDiv.className = 'thermal-item';
             itemDiv.innerHTML = `
                 <div class="thermal-row">
-                    <span class="thermal-desc">${qty}${entry.item || entry.category}</span>
+                    <span class="thermal-desc">${qtyStr}${entry.item || entry.category}</span>
                     <span>${amt.toFixed(2)}</span>
                 </div>
                 <div class="thermal-row thermal-sub">
@@ -415,7 +419,7 @@
         // Temporarily reset position for clean capture
         const wrapper = document.getElementById('receipt-wrapper');
         const originalPos = wrapper.style.position;
-        wrapper.style.position = 'static'; // Make visible in flow for capture
+        wrapper.style.position = 'static'; 
 
         html2canvas(billEl, { scale: 3, backgroundColor: '#ffffff' }).then(canvas => {
             const link = document.createElement('a');
@@ -423,6 +427,8 @@
             link.href = canvas.toDataURL('image/jpeg', 0.9);
             link.click();
             wrapper.style.position = originalPos; // Hide again
+            
+            document.getElementById('status').innerText = "All Done. Ready for new session.";
         });
     }
 </script>
