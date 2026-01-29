@@ -24,7 +24,6 @@
             align-items: center;
         }
 
-        /* --- Main UI Card --- */
         .card {
             background: var(--card-bg);
             border-radius: 8px;
@@ -33,6 +32,7 @@
             max-width: 600px;
             padding: 20px;
             box-sizing: border-box;
+            margin-bottom: 20px;
         }
 
         .header {
@@ -52,23 +52,29 @@
             border-radius: 6px;
             margin-bottom: 15px;
             background: #fafafa;
-            position: relative;
         }
 
         .row-grid {
             display: grid;
+            grid-template-columns: 1fr 1fr 1fr; /* 3 columns for Date/Qty/Amount */
+            gap: 10px;
+        }
+        
+        /* Grid adjustments for Selects */
+        .row-selects {
+            display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            margin-top: 10px;
         }
 
         @media (max-width: 480px) {
-            .row-grid { grid-template-columns: 1fr; }
+            .row-grid, .row-selects { grid-template-columns: 1fr; }
         }
 
         input, select {
             width: 100%;
             padding: 8px;
-            margin-bottom: 5px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
@@ -76,9 +82,11 @@
         }
 
         label {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
             font-weight: bold;
+            display: block;
+            margin-bottom: 2px;
         }
 
         .btn-remove {
@@ -89,7 +97,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
-            margin-top: 5px;
+            margin-top: 10px;
         }
 
         .actions {
@@ -106,7 +114,6 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 16px;
-            transition: opacity 0.2s;
         }
 
         .btn-add { background: var(--accent); color: white; }
@@ -122,25 +129,33 @@
         .success { color: #27ae60; }
         .error { color: #c0392b; }
 
-        /* --- Thermal Receipt Hidden/Preview Area --- */
-        #receipt-wrapper {
-            margin-top: 30px;
-            display: flex;
-            justify-content: center;
+        /* --- Session History Table --- */
+        #history-card {
+            display: none; /* Hidden until data exists */
         }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .history-table th, .history-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .history-table th { background-color: #f2f2f2; }
 
-        /* Thermal Bill Styling */
+        /* --- Thermal Receipt (Hidden) --- */
+        #receipt-wrapper { display: flex; justify-content: center; position: absolute; top: -9999px; }
+        
         .thermal-bill {
-            width: 300px; /* Narrow width for receipt look */
+            width: 300px;
             background: #fff;
             color: #000;
             padding: 20px;
-            font-family: 'Courier New', Courier, monospace; /* Monospace feel */
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            font-family: 'Courier New', Courier, monospace;
             border: 1px solid #eee;
-            box-sizing: border-box;
-            /* Initially hidden visually but present in DOM for canvas */
-            display: none; 
         }
 
         .thermal-header {
@@ -149,55 +164,14 @@
             padding-bottom: 10px;
             margin-bottom: 10px;
         }
-        
-        .thermal-title {
-            font-size: 18px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .thermal-meta {
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .thermal-item {
-            margin-bottom: 10px;
-            border-bottom: 1px dashed #ccc;
-            padding-bottom: 5px;
-            font-size: 12px;
-        }
-
-        .thermal-row {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .thermal-desc {
-            font-weight: bold;
-            margin-bottom: 2px;
-        }
-
-        .thermal-sub {
-            font-size: 10px;
-            color: #444;
-        }
-
-        .thermal-total {
-            margin-top: 15px;
-            border-top: 2px dashed #000;
-            padding-top: 10px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 16px;
-            font-weight: bold;
-        }
-
-        .thermal-footer {
-            margin-top: 20px;
-            text-align: center;
-            font-size: 10px;
-        }
+        .thermal-title { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+        .thermal-meta { font-size: 12px; margin-top: 5px; }
+        .thermal-item { margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; font-size: 12px; }
+        .thermal-row { display: flex; justify-content: space-between; }
+        .thermal-desc { font-weight: bold; margin-bottom: 2px; }
+        .thermal-sub { font-size: 10px; color: #444; }
+        .thermal-total { margin-top: 15px; border-top: 2px dashed #000; padding-top: 10px; display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; }
+        .thermal-footer { margin-top: 20px; text-align: center; font-size: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -208,8 +182,7 @@
         </div>
 
         <form id="expenseForm">
-            <div id="rows-container">
-                </div>
+            <div id="rows-container"></div>
             
             <div class="actions">
                 <button type="button" class="btn btn-add" onclick="addNewRow()">+ Add Row</button>
@@ -220,67 +193,72 @@
         <div id="status" class="status-msg"></div>
     </div>
 
+    <div class="card" id="history-card">
+        <div class="header">
+            <h3>Recent Entries (Session)</h3>
+        </div>
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Amt</th>
+                </tr>
+            </thead>
+            <tbody id="history-body"></tbody>
+        </table>
+    </div>
+
     <div id="receipt-wrapper">
         <div id="thermal-receipt" class="thermal-bill">
             <div class="thermal-header">
                 <div class="thermal-title">Home Management</div>
                 <div class="thermal-meta" id="bill-timestamp"></div>
             </div>
-            <div id="bill-items">
-                </div>
+            <div id="bill-items"></div>
             <div class="thermal-total">
                 <span>TOTAL</span>
                 <span id="bill-total">0.00</span>
             </div>
             <div class="thermal-footer">
-                Thank you!<br>Generated via Web App
+                Thank you!<br>Generated Via Happy Home
             </div>
         </div>
     </div>
 
 <script>
     // ================= CONFIGURATION =================
-    // TODO: PASTE YOUR DEPLOYED WEB APP URL HERE
-    const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbybG5xJzKwryeAT79V69G4CuWzECHiphSLJRzmqWGMpN0jx5BEoRFamq2a99qFwyWYw/exec';
+    // REPLACE THIS URL WITH YOUR DEPLOYED GAS WEB APP URL
+    const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbybG5xJzKwryeAT79V69G4CuWzECHiphSLJRzmqWGMpN0jx5BEoRFamq2a99qFwyWYw/exec'; 
     // =================================================
 
-    // State for dropdowns
     let categories = [];
     let paymentModes = [];
 
-    // Initialize
     window.onload = async () => {
         await fetchDropdowns();
-        addNewRow(); // Start with one row
+        addNewRow();
     };
 
     async function fetchDropdowns() {
-        const statusEl = document.getElementById('status');
         try {
-            // GET request to GAS
             const response = await fetch(GAS_BASE_URL);
             const data = await response.json();
-            
             if (data.categories) categories = data.categories;
             if (data.paymentModes) paymentModes = data.paymentModes;
-            
-            console.log("Dropdowns loaded", data);
         } catch (error) {
-            console.error(error);
-            statusEl.innerText = "Error loading dropdowns. Check console.";
-            statusEl.className = "status-msg error";
+            document.getElementById('status').innerText = "Error loading dropdowns.";
         }
     }
 
     function addNewRow() {
         const container = document.getElementById('rows-container');
         const rowId = 'row-' + Date.now();
-        
         const div = document.createElement('div');
         div.className = 'row-entry';
         div.id = rowId;
 
-        // Build Select Options
         const catOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
         const payOptions = paymentModes.map(m => `<option value="${m}">${m}</option>`).join('');
 
@@ -291,38 +269,38 @@
                     <input type="date" name="date" class="input-date">
                 </div>
                 <div>
+                    <label>QTY</label>
+                    <input type="number" name="qty" placeholder="1">
+                </div>
+                <div>
                     <label>Amount</label>
                     <input type="number" step="0.01" name="amount" placeholder="0.00">
                 </div>
+            </div>
+            
+            <div class="row-selects">
                 <div>
                     <label>Category</label>
-                    <select name="category">
-                        <option value="">Select...</option>
-                        ${catOptions}
-                    </select>
+                    <select name="category"><option value="">Select...</option>${catOptions}</select>
                 </div>
                 <div>
                     <label>Payment Mode</label>
-                    <select name="paymentMode">
-                        <option value="">Select...</option>
-                        ${payOptions}
-                    </select>
+                    <select name="paymentMode"><option value="">Select...</option>${payOptions}</select>
                 </div>
             </div>
+
             <div style="margin-top: 10px;">
                 <label>Item Description</label>
-                <input type="text" name="item" placeholder="What did you buy?">
+                <input type="text" name="item" placeholder="Item Name">
             </div>
             <div style="margin-top: 10px;">
                 <label>Purchaser Name</label>
-                <input type="text" name="purchaser" placeholder="Who bought it?">
+                <input type="text" name="purchaser" placeholder="Purchaser">
             </div>
             <button type="button" class="btn-remove" onclick="removeRow('${rowId}')">Remove Row</button>
         `;
 
         container.appendChild(div);
-        
-        // Default date to today
         div.querySelector('.input-date').valueAsDate = new Date();
     }
 
@@ -336,13 +314,13 @@
         statusEl.innerText = "Saving...";
         statusEl.className = "status-msg";
 
-        // 1. Gather Data
         const rows = document.querySelectorAll('.row-entry');
         const entries = [];
         
         rows.forEach(row => {
             entries.push({
                 date: row.querySelector('[name="date"]').value,
+                qty: row.querySelector('[name="qty"]').value,
                 amount: row.querySelector('[name="amount"]').value,
                 category: row.querySelector('[name="category"]').value,
                 paymentMode: row.querySelector('[name="paymentMode"]').value,
@@ -351,40 +329,55 @@
             });
         });
 
-        if (entries.length === 0) {
-            statusEl.innerText = "No data to save.";
-            return;
-        }
+        if (entries.length === 0) return;
 
         try {
-            // 2. Send to Google Apps Script
-            // We use method: "POST" with body stringified.
-            // Using "text/plain" content-type avoids CORS preflight OPTIONS request issues with GAS.
             const response = await fetch(GAS_BASE_URL, {
                 method: "POST",
                 body: JSON.stringify({ entries: entries })
             });
-            
             const result = await response.json();
 
             if (result.status === 'success') {
-                statusEl.innerText = `Success! ${result.rowsAdded} rows added. Generating Bill...`;
+                statusEl.innerText = `Saved! Generating Receipt...`;
                 statusEl.className = "status-msg success";
                 
-                // 3. Generate and Download Bill
+                // 1. Generate Bill
                 generateAndDownloadBill(entries);
                 
-                // Optional: Clear form
+                // 2. Note Below (Add to History)
+                addToHistory(entries);
+
+                // 3. Reset Form for new entry
                 document.getElementById('rows-container').innerHTML = '';
                 addNewRow();
+                
+                setTimeout(() => { statusEl.innerText = "Ready for new entry."; }, 2000);
             } else {
-                throw new Error(result.message || "Unknown error");
+                throw new Error(result.message);
             }
         } catch (error) {
-            console.error(error);
             statusEl.innerText = "Error: " + error.message;
             statusEl.className = "status-msg error";
         }
+    }
+
+    function addToHistory(entries) {
+        const historyCard = document.getElementById('history-card');
+        const historyBody = document.getElementById('history-body');
+        
+        historyCard.style.display = 'block';
+
+        entries.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${entry.date}</td>
+                <td>${entry.item || entry.category}</td>
+                <td>${entry.qty || '-'}</td>
+                <td>${entry.amount}</td>
+            `;
+            historyBody.appendChild(tr);
+        });
     }
 
     function generateAndDownloadBill(entries) {
@@ -393,27 +386,24 @@
         const totalEl = document.getElementById('bill-total');
         const dateEl = document.getElementById('bill-timestamp');
 
-        // Populate Date
-        const now = new Date();
-        dateEl.innerText = now.toLocaleString();
-
-        // Populate Items
+        dateEl.innerText = new Date().toLocaleString();
         itemsContainer.innerHTML = '';
         let total = 0;
 
         entries.forEach(entry => {
             const amt = parseFloat(entry.amount) || 0;
             total += amt;
+            const qty = entry.qty ? `(${entry.qty}) ` : '';
             
             const itemDiv = document.createElement('div');
             itemDiv.className = 'thermal-item';
             itemDiv.innerHTML = `
                 <div class="thermal-row">
-                    <span class="thermal-desc">${entry.item || entry.category || 'Item'}</span>
+                    <span class="thermal-desc">${qty}${entry.item || entry.category}</span>
                     <span>${amt.toFixed(2)}</span>
                 </div>
                 <div class="thermal-row thermal-sub">
-                    <span>${entry.date} | ${entry.paymentMode}</span>
+                    <span>${entry.paymentMode}</span>
                     <span>${entry.purchaser}</span>
                 </div>
             `;
@@ -421,27 +411,20 @@
         });
 
         totalEl.innerText = total.toFixed(2);
+        
+        // Temporarily reset position for clean capture
+        const wrapper = document.getElementById('receipt-wrapper');
+        const originalPos = wrapper.style.position;
+        wrapper.style.position = 'static'; // Make visible in flow for capture
 
-        // Show temporarily for capture
-        billEl.style.display = 'block';
-
-        // Use HTML2Canvas to render
-        html2canvas(billEl, {
-            scale: 3, // HD Quality
-            backgroundColor: '#ffffff',
-            useCORS: true
-        }).then(canvas => {
-            // Auto download
+        html2canvas(billEl, { scale: 3, backgroundColor: '#ffffff' }).then(canvas => {
             const link = document.createElement('a');
-            link.download = `bill-${Date.now()}.jpeg`;
+            link.download = `HappyHome-Bill-${Date.now()}.jpeg`;
             link.href = canvas.toDataURL('image/jpeg', 0.9);
             link.click();
-            
-            // Optional: Hide receipt again or leave it visible as confirmation
-            // billEl.style.display = 'none'; 
+            wrapper.style.position = originalPos; // Hide again
         });
     }
 </script>
-
 </body>
 </html>
