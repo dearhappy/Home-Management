@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f7f6;
+            --card-bg: #ffffff;
+            --border: #ddd;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- Main UI Card --- */
+        .card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 10px;
+        }
+
+        .header h2 { margin: 0; }
+
+        /* --- Form Styles --- */
+        .row-entry {
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            background: #fafafa;
+            position: relative;
+        }
+
+        .row-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .row-grid { grid-template-columns: 1fr; }
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        label {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .btn-remove {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-add { background: var(--accent); color: white; }
+        .btn-submit { background: #27ae60; color: white; }
+        .btn:hover { opacity: 0.9; }
+
+        .status-msg {
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        .success { color: #27ae60; }
+        .error { color: #c0392b; }
+
+        /* --- Thermal Receipt Hidden/Preview Area --- */
+        #receipt-wrapper {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Thermal Bill Styling */
+        .thermal-bill {
+            width: 300px; /* Narrow width for receipt look */
+            background: #fff;
+            color: #000;
+            padding: 20px;
+            font-family: 'Courier New', Courier, monospace; /* Monospace feel */
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+            box-sizing: border-box;
+            /* Initially hidden visually but present in DOM for canvas */
+            display: none; 
+        }
+
+        .thermal-header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .thermal-title {
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .thermal-meta {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .thermal-item {
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #ccc;
+            padding-bottom: 5px;
+            font-size: 12px;
+        }
+
+        .thermal-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .thermal-desc {
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .thermal-sub {
+            font-size: 10px;
+            color: #444;
+        }
+
+        .thermal-total {
+            margin-top: 15px;
+            border-top: 2px dashed #000;
+            padding-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .thermal-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="header">
+            <h2>Home Management</h2>
+        </div>
+
+        <form id="expenseForm">
+            <div id="rows-container">
+                </div>
+            
+            <div class="actions">
+                <button type="button" class="btn btn-add" onclick="addNewRow()">+ Add Row</button>
+                <button type="button" class="btn btn-submit" onclick="submitExpenses()">Submit & Save</button>
+            </div>
+        </form>
+
+        <div id="status" class="status-msg"></div>
+    </div>
+
+    <div id="receipt-wrapper">
+        <div id="thermal-receipt" class="thermal-bill">
+            <div class="thermal-header">
+                <div class="thermal-title">Home Management</div>
+                <div class="thermal-meta" id="bill-timestamp"></div>
+            </div>
+            <div id="bill-items">
+                </div>
+            <div class="thermal-total">
+                <span>TOTAL</span>
+                <span id="bill-total">0.00</span>
+            </div>
+            <div class="thermal-footer">
+                Thank you!<br>Generated via Web App
+            </div>
+        </div>
+    </div>
+
+<script>
+    // ================= CONFIGURATION =================
+    // TODO: PASTE YOUR DEPLOYED WEB APP URL HERE
+    const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbybG5xJzKwryeAT79V69G4CuWzECHiphSLJRzmqWGMpN0jx5BEoRFamq2a99qFwyWYw/exec';
+    // =================================================
+
+    // State for dropdowns
+    let categories = [];
+    let paymentModes = [];
+
+    // Initialize
+    window.onload = async () => {
+        await fetchDropdowns();
+        addNewRow(); // Start with one row
+    };
+
+    async function fetchDropdowns() {
+        const statusEl = document.getElementById('status');
+        try {
+            // GET request to GAS
+            const response = await fetch(GAS_BASE_URL);
+            const data = await response.json();
+            
+            if (data.categories) categories = data.categories;
+            if (data.paymentModes) paymentModes = data.paymentModes;
+            
+            console.log("Dropdowns loaded", data);
+        } catch (error) {
+            console.error(error);
+            statusEl.innerText = "Error loading dropdowns. Check console.";
+            statusEl.className = "status-msg error";
+        }
+    }
+
+    function addNewRow() {
+        const container = document.getElementById('rows-container');
+        const rowId = 'row-' + Date.now();
+        
+        const div = document.createElement('div');
+        div.className = 'row-entry';
+        div.id = rowId;
+
+        // Build Select Options
+        const catOptions = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        const payOptions = paymentModes.map(m => `<option value="${m}">${m}</option>`).join('');
+
+        div.innerHTML = `
+            <div class="row-grid">
+                <div>
+                    <label>Date</label>
+                    <input type="date" name="date" class="input-date">
+                </div>
+                <div>
+                    <label>Amount</label>
+                    <input type="number" step="0.01" name="amount" placeholder="0.00">
+                </div>
+                <div>
+                    <label>Category</label>
+                    <select name="category">
+                        <option value="">Select...</option>
+                        ${catOptions}
+                    </select>
+                </div>
+                <div>
+                    <label>Payment Mode</label>
+                    <select name="paymentMode">
+                        <option value="">Select...</option>
+                        ${payOptions}
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 10px;">
+                <label>Item Description</label>
+                <input type="text" name="item" placeholder="What did you buy?">
+            </div>
+            <div style="margin-top: 10px;">
+                <label>Purchaser Name</label>
+                <input type="text" name="purchaser" placeholder="Who bought it?">
+            </div>
+            <button type="button" class="btn-remove" onclick="removeRow('${rowId}')">Remove Row</button>
+        `;
+
+        container.appendChild(div);
+        
+        // Default date to today
+        div.querySelector('.input-date').valueAsDate = new Date();
+    }
+
+    function removeRow(id) {
+        const row = document.getElementById(id);
+        if (row) row.remove();
+    }
+
+    async function submitExpenses() {
+        const statusEl = document.getElementById('status');
+        statusEl.innerText = "Saving...";
+        statusEl.className = "status-msg";
+
+        // 1. Gather Data
+        const rows = document.querySelectorAll('.row-entry');
+        const entries = [];
+        
+        rows.forEach(row => {
+            entries.push({
+                date: row.querySelector('[name="date"]').value,
+                amount: row.querySelector('[name="amount"]').value,
+                category: row.querySelector('[name="category"]').value,
+                paymentMode: row.querySelector('[name="paymentMode"]').value,
+                item: row.querySelector('[name="item"]').value,
+                purchaser: row.querySelector('[name="purchaser"]').value
+            });
+        });
+
+        if (entries.length === 0) {
+            statusEl.innerText = "No data to save.";
+            return;
+        }
+
+        try {
+            // 2. Send to Google Apps Script
+            // We use method: "POST" with body stringified.
+            // Using "text/plain" content-type avoids CORS preflight OPTIONS request issues with GAS.
+            const response = await fetch(GAS_BASE_URL, {
+                method: "POST",
+                body: JSON.stringify({ entries: entries })
+            });
+            
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                statusEl.innerText = `Success! ${result.rowsAdded} rows added. Generating Bill...`;
+                statusEl.className = "status-msg success";
+                
+                // 3. Generate and Download Bill
+                generateAndDownloadBill(entries);
+                
+                // Optional: Clear form
+                document.getElementById('rows-container').innerHTML = '';
+                addNewRow();
+            } else {
+                throw new Error(result.message || "Unknown error");
+            }
+        } catch (error) {
+            console.error(error);
+            statusEl.innerText = "Error: " + error.message;
+            statusEl.className = "status-msg error";
+        }
+    }
+
+    function generateAndDownloadBill(entries) {
+        const billEl = document.getElementById('thermal-receipt');
+        const itemsContainer = document.getElementById('bill-items');
+        const totalEl = document.getElementById('bill-total');
+        const dateEl = document.getElementById('bill-timestamp');
+
+        // Populate Date
+        const now = new Date();
+        dateEl.innerText = now.toLocaleString();
+
+        // Populate Items
+        itemsContainer.innerHTML = '';
+        let total = 0;
+
+        entries.forEach(entry => {
+            const amt = parseFloat(entry.amount) || 0;
+            total += amt;
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'thermal-item';
+            itemDiv.innerHTML = `
+                <div class="thermal-row">
+                    <span class="thermal-desc">${entry.item || entry.category || 'Item'}</span>
+                    <span>${amt.toFixed(2)}</span>
+                </div>
+                <div class="thermal-row thermal-sub">
+                    <span>${entry.date} | ${entry.paymentMode}</span>
+                    <span>${entry.purchaser}</span>
+                </div>
+            `;
+            itemsContainer.appendChild(itemDiv);
+        });
+
+        totalEl.innerText = total.toFixed(2);
+
+        // Show temporarily for capture
+        billEl.style.display = 'block';
+
+        // Use HTML2Canvas to render
+        html2canvas(billEl, {
+            scale: 3, // HD Quality
+            backgroundColor: '#ffffff',
+            useCORS: true
+        }).then(canvas => {
+            // Auto download
+            const link = document.createElement('a');
+            link.download = `bill-${Date.now()}.jpeg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+            
+            // Optional: Hide receipt again or leave it visible as confirmation
+            // billEl.style.display = 'none'; 
+        });
+    }
+</script>
+
+</body>
+</html>
