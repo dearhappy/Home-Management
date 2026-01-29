@@ -45,6 +45,21 @@
 
         .header h2 { margin: 0; }
 
+        /* --- Balance Display --- */
+        .balance-box {
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+        .balance-val {
+            font-weight: bold;
+            color: #27ae60; /* Green for money */
+            font-size: 20px;
+        }
+
         /* --- Input Grid --- */
         .input-grid {
             display: grid;
@@ -93,14 +108,14 @@
         .btn:hover { opacity: 0.9; }
 
         .btn-add { background: var(--primary); color: white; }
-        .btn-submit { background: #27ae60; color: white; margin-top: 20px; display: none; } /* Hidden by default */
+        .btn-submit { background: #27ae60; color: white; margin-top: 20px; display: none; } 
         
         /* --- Staged List Table --- */
         #staged-container {
             margin-top: 25px;
             border-top: 2px solid #eee;
             padding-top: 15px;
-            display: none; /* Hidden if empty */
+            display: none;
         }
         
         .list-title {
@@ -158,6 +173,9 @@
     <div class="card">
         <div class="header">
             <h2>Home Management</h2>
+            <div class="balance-box">
+                Available Funds: <span id="display-balance" class="balance-val">Loading...</span>
+            </div>
         </div>
 
         <div class="input-grid">
@@ -204,8 +222,7 @@
                         <th>Action</th>
                     </tr>
                 </thead>
-                <tbody id="staged-body">
-                    </tbody>
+                <tbody id="staged-body"></tbody>
             </table>
 
             <button type="button" class="btn btn-submit" id="btn-final-submit" onclick="submitFinal()">Final Submit & Generate Bill</button>
@@ -237,31 +254,43 @@
     const GAS_BASE_URL = 'https://script.google.com/macros/s/AKfycbybG5xJzKwryeAT79V69G4CuWzECHiphSLJRzmqWGMpN0jx5BEoRFamq2a99qFwyWYw/exec'; 
     // =================================================
 
-    // Global Array to hold items before submission
     let stagedItems = [];
 
-    // On Load
     window.onload = async () => {
-        // Set Default Date
         document.getElementById('in-date').valueAsDate = new Date();
-        await fetchDropdowns();
+        await fetchDropdownsAndBalance();
     };
 
-    // 1. Fetch Dropdowns
-    async function fetchDropdowns() {
+    // 1. Fetch Dropdowns AND Balance
+    async function fetchDropdownsAndBalance() {
         try {
             const response = await fetch(GAS_BASE_URL);
             const data = await response.json();
             
+            // Populate Selects
             const catSelect = document.getElementById('in-category');
             const paySelect = document.getElementById('in-payment');
-
             populateSelect(catSelect, data.categories);
             populateSelect(paySelect, data.paymentModes);
 
+            // Populate Balance
+            const balEl = document.getElementById('display-balance');
+            // Check if balance exists and format it
+            if (data.balance !== undefined) {
+                // Format to currency style if it's a number
+                const bal = parseFloat(data.balance);
+                if (!isNaN(bal)) {
+                    balEl.innerText = bal.toLocaleString(undefined, { minimumFractionDigits: 2 });
+                } else {
+                    balEl.innerText = data.balance; // just show text if not number
+                }
+            } else {
+                balEl.innerText = "N/A";
+            }
+
         } catch (error) {
             console.error(error);
-            document.getElementById('status').innerText = "Error loading dropdowns.";
+            document.getElementById('status').innerText = "Error loading data.";
         }
     }
 
@@ -277,7 +306,7 @@
         }
     }
 
-    // 2. Add to Local List (Staging)
+    // 2. Add to Local List
     function addToList() {
         const date = document.getElementById('in-date').value;
         const amount = document.getElementById('in-amount').value;
@@ -287,21 +316,18 @@
         const qty = document.getElementById('in-qty').value;
         const purchaser = document.getElementById('in-purchaser').value;
 
-        // Basic Validation
         if (!amount && !item) {
             alert("Please enter at least an Item Name or Amount");
             return;
         }
 
-        // Add to array
         stagedItems.push({
             date, amount, category, paymentMode: payment, item, qty, purchaser
         });
 
-        // Render Table
         renderStagedTable();
 
-        // Clear Fields (keep Date and Purchaser for convenience)
+        // Clear Fields (Keep Date/Purchaser)
         document.getElementById('in-amount').value = '';
         document.getElementById('in-item').value = '';
         document.getElementById('in-qty').value = '';
@@ -309,13 +335,11 @@
         document.getElementById('in-payment').value = '';
     }
 
-    // 3. Remove from Local List
     function removeFromList(index) {
         stagedItems.splice(index, 1);
         renderStagedTable();
     }
 
-    // 4. Update UI
     function renderStagedTable() {
         const container = document.getElementById('staged-container');
         const tbody = document.getElementById('staged-body');
@@ -344,15 +368,14 @@
         });
     }
 
-    // 5. Final Submit
+    // 3. Final Submit
     async function submitFinal() {
         if (stagedItems.length === 0) return;
 
         const statusEl = document.getElementById('status');
-        statusEl.innerText = "Submitting all items...";
+        statusEl.innerText = "Submitting...";
         statusEl.className = "status-msg";
         
-        // Hide button to prevent double click
         document.getElementById('btn-final-submit').style.display = 'none';
 
         try {
@@ -363,15 +386,16 @@
             const result = await response.json();
 
             if (result.status === 'success') {
-                statusEl.innerText = `Success! Saved ${result.rowsAdded} entries. Generating Bill...`;
+                statusEl.innerText = `Success! Saved. Generating Bill...`;
                 statusEl.className = "status-msg success";
 
-                // Generate Bill
                 generateAndDownloadBill(stagedItems);
 
-                // Clear Data & UI
                 stagedItems = [];
-                renderStagedTable(); // This hides the table
+                renderStagedTable();
+                
+                // Refresh balance after spending (Optional - depends if sheet updates instantly)
+                // setTimeout(fetchDropdownsAndBalance, 3000); 
                 
             } else {
                 throw new Error(result.message);
@@ -379,11 +403,11 @@
         } catch (error) {
             statusEl.innerText = "Error: " + error.message;
             statusEl.className = "status-msg error";
-            document.getElementById('btn-final-submit').style.display = 'block'; // Show button again on error
+            document.getElementById('btn-final-submit').style.display = 'block';
         }
     }
 
-    // 6. Generate Bill
+    // 4. Generate Bill
     function generateAndDownloadBill(entries) {
         const billEl = document.getElementById('thermal-receipt');
         const itemsContainer = document.getElementById('bill-items');
@@ -416,7 +440,6 @@
 
         totalEl.innerText = total.toFixed(2);
         
-        // Temporarily reset position for clean capture
         const wrapper = document.getElementById('receipt-wrapper');
         const originalPos = wrapper.style.position;
         wrapper.style.position = 'static'; 
@@ -426,7 +449,7 @@
             link.download = `HappyHome-Bill-${Date.now()}.jpeg`;
             link.href = canvas.toDataURL('image/jpeg', 0.9);
             link.click();
-            wrapper.style.position = originalPos; // Hide again
+            wrapper.style.position = originalPos;
             
             document.getElementById('status').innerText = "All Done. Ready for new session.";
         });
