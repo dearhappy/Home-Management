@@ -184,24 +184,27 @@
                 <input type="date" id="in-date">
             </div>
             <div>
-                <label>Amount</label>
-                <input type="number" step="0.01" id="in-amount" placeholder="0.00">
-            </div>
-            <div>
                 <label>Category</label>
                 <select id="in-category"><option value="">Loading...</option></select>
             </div>
-            <div>
-                <label>Payment Mode</label>
-                <select id="in-payment"><option value="">Loading...</option></select>
-            </div>
+            
             <div class="full-width">
                 <label>Item Description</label>
                 <input type="text" id="in-item" placeholder="What did you buy?">
             </div>
+
             <div>
                 <label>Qty (Text)</label>
                 <input type="text" id="in-qty" placeholder="e.g. 1 kg, 2 packs">
+            </div>
+            <div>
+                <label>Amount</label>
+                <input type="number" step="0.01" id="in-amount" placeholder="0.00">
+            </div>
+
+            <div>
+                <label>Payment Mode</label>
+                <select id="in-payment"><option value="">Loading...</option></select>
             </div>
             <div>
                 <label>Purchaser Name</label>
@@ -275,14 +278,12 @@
 
             // Populate Balance
             const balEl = document.getElementById('display-balance');
-            // Check if balance exists and format it
             if (data.balance !== undefined) {
-                // Format to currency style if it's a number
                 const bal = parseFloat(data.balance);
                 if (!isNaN(bal)) {
                     balEl.innerText = bal.toLocaleString(undefined, { minimumFractionDigits: 2 });
                 } else {
-                    balEl.innerText = data.balance; // just show text if not number
+                    balEl.innerText = data.balance;
                 }
             } else {
                 balEl.innerText = "N/A";
